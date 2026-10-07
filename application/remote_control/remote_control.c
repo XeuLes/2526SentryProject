@@ -221,7 +221,7 @@ void USART3_IRQHandler(void)
     {
         static uint16_t this_time_rx_len = 0;
 
-        __HAL_UART_CLEAR_PEFLAG(&huart3);
+        __HAL_UART_CLEAR_IDLEFLAG(&huart3);
 
         uint32_t now = HAL_GetTick();
 
@@ -296,7 +296,7 @@ void USART3_IRQHandler(void)
 
             //set memory buffer 0
             //设定缓冲区0
-            DMA1_Stream1->CR &= ~(DMA_SxCR_CT);
+            hdma_usart3_rx.Instance->CR &= ~(DMA_SxCR_CT);
             
             //enable DMA
             //使能DMA
@@ -329,7 +329,7 @@ void USART3_IRQHandler(void)
 
                 //记录数据接收时间
                 last_receive_time = HAL_GetTick();
-                detect_hook(DBUS_TOE);
+                //detect_hook(DBUS_TOE);
             }
         }
     }
@@ -528,13 +528,13 @@ static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
     {
     // 将SBUS通道数据转换为DT7遥控器数据，方便兼容使用
     rc_ctrl->rc.ch[0] =  (sbus.ch[0] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
-    rc_ctrl->rc.ch[1] = -(sbus.ch[1] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
+    rc_ctrl->rc.ch[1] = -(sbus.ch[2] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
     rc_ctrl->rc.ch[2] =  (sbus.ch[3] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
-    rc_ctrl->rc.ch[3] =  (sbus.ch[2] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
+    rc_ctrl->rc.ch[3] =  (sbus.ch[1] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
 
     static char sw_mapping[3] = {RC_SW_UP, RC_SW_MID, RC_SW_DOWN};
-    rc_ctrl->rc.s[0] = sw_mapping[(sbus.ch[5] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
-    rc_ctrl->rc.s[1] = sw_mapping[(sbus.ch[4] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
+    rc_ctrl->rc.s[0] = sw_mapping[(sbus.ch[7] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
+    rc_ctrl->rc.s[1] = sw_mapping[(sbus.ch[6] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
     }
 
     // ET08A 遥控器没有鼠标和键盘数据

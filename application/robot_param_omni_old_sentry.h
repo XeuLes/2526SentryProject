@@ -7,7 +7,7 @@
 #define INCLUDED_ROBOT_PARAM_H
 #include "robot_typedef.h"
 
-#define CHASSIS_TYPE OLD_CHASSIS_OMNI_WHEEL          // 选择底盘类型
+#define CHASSIS_TYPE CHASSIS_OMNI_WHEEL          // 选择底盘类型
 #define GIMBAL_TYPE OLD_GIMBAL_YAW_PITCH_DIRECT  // 选择云台类型
 #define SHOOT_TYPE OLD_SHOOT_FRIC_TRIGGER        // 选择发射机构类型
 #define CONTROL_TYPE CHASSIS_AND_GIMBAL          // 选择控制类型
@@ -21,6 +21,8 @@
 
 /*-------------------- Chassis --------------------*/
 //physical parameters ---------------------
+#define CALIBRATION_K 2.05312502053125f                 //(none)底盘速度校准系数
+
 #define WHEEL_RADIUS (0.050f)            //(m)轮子半径
 #define WHEEL_CENTER_DISTANCE (0.250f)   //(m)轮子到车的距离         
 
@@ -72,6 +74,18 @@
 #define KD_OMNI_VEL (0.3f)
 #define MAX_IOUT_OMNI_VEL (10000.0f)
 #define MAX_OUT_OMNI_VEL (30000.0f)
+
+//云台跟随角度环SMC参数
+#define J_CHASSIS_FOLLOW (0.065f)
+#define K_CHASSIS_FOLLOW (30.0f)
+#define C_CHASSIS_FOLLOW (8.0f)
+#define epsilon_CHASSIS_FOLLOW (0.5f)
+#define SAT_LIMIT_CHASSIS_FOLLOW (1)
+#define POS_ESP_CHASSIS_FOLLOW (0.01f)
+#define U_MAX_CHASSIS_FOLLOW (50)
+
+//SMC parameters ---------------------
+#define CHASSIS_SAMPLE_TIME (0.001f) // 云台采样周期(s)
 
 //云台跟随角度环PID参数
 #define KP_CHASSIS_FOLLOW_GIMBAL (3.0f)
@@ -172,6 +186,9 @@
 //LPF parameters ---------------------
 #define GIMBAL_YAW_LPF_ALPHA           (0.01f)
 #define GIMBAL_PITCH_LPF_ALPHA         (0.95f)
+
+//SMC parameters ---------------------
+#define GIMBAL_SAMPLE_TIME (0.001f) // 云台采样周期(s)
 
 /*-------------------- Shoot --------------------*/
 //physical parameters ---------------------

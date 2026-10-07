@@ -36,6 +36,8 @@ typedef struct
 {
     float cmd_yaw_last;  // 上一帧的上位机目标角度
     uint16_t aimlosttime; // 目标丢失时间
+    bool scan;
+    uint8_t scan_dir_yaw; // 扫描方向
 } SCC_t;
 
 #endif  // USB_H
