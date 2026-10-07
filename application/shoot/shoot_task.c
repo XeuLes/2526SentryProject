@@ -21,6 +21,7 @@
 #include "attribute_typedef.h"
 #include "cmsis_os.h"
 #include "shoot_fric_trigger.h"
+#include "old_shoot_fric_trigger.h"
 
 #ifndef SHOOT_TASK_INIT_TIME
 #define SHOOT_TASK_INIT_TIME 201

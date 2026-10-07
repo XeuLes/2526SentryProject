@@ -34,6 +34,8 @@ Shoot_s SHOOT = {
 
 
 uint8_t fric_ui;
+uint8_t fric_mode_test = 0;
+
 fp32 delta;
 
 /*-------------------- Init --------------------*/
@@ -75,6 +77,7 @@ void ShootSetMode(void)
   if (switch_is_down(SHOOT.rc->rc.s[SHOOT_MODE_CHANNEL]))//下档防止误触
   {
       SHOOT.state = FRIC_NOT_READY;
+      fric_mode_test = 1;
       SHOOT.mode = LOAD_STOP;
   } 
 
@@ -100,10 +103,12 @@ void ShootSetMode(void)
 
       if (switch_is_up(SHOOT.rc->rc.s[SHOOT_MODE_CHANNEL]) && !SHOOT.shoot_flag)
       {
+        fric_mode_test = 2;
         SHOOT.mode = LAOD_BULLET;
       }
       else
       {
+        fric_mode_test = 1;
         SHOOT.mode = LOAD_STOP;
       }
       
@@ -113,16 +118,19 @@ void ShootSetMode(void)
       {
         if (GetScCmdFire())
         {
+          fric_mode_test = 3;
           SHOOT.mode = LOAD_BURSTFIRE;
         }
         else
         {
+          fric_mode_test = 1;
           SHOOT.mode = LOAD_STOP;
         }
       }
 
       if (SHOOT.move_flag)
       {
+        fric_mode_test = 2;
         SHOOT.mode = LAOD_BULLET;
       }
       
@@ -134,6 +142,7 @@ void ShootSetMode(void)
         }
         else
         {
+          fric_mode_test = 3;
           SHOOT.mode = LOAD_BURSTFIRE;
           SHOOT.move_flag = 0;
         }
@@ -154,6 +163,7 @@ void ShootSetMode(void)
   {
     if(SHOOT.block_time >= BLOCK_TIME)
     {
+      fric_mode_test = 4;
       SHOOT.mode = LOAD_BLOCK;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
     }
 
@@ -202,13 +212,15 @@ void ShootSetMode(void)
   //安全档
   if ((switch_is_down(SHOOT.rc->rc.s[0])))
   {
+    fric_mode_test = 1;
     SHOOT.mode = LOAD_STOP;
     SHOOT.state = FRIC_NOT_READY;
   }
   
   //遥控器离线保护
   if ( toe_is_error(DBUS_TOE) )
-  {        
+  {  
+    fric_mode_test = 1;
     SHOOT.state = FRIC_NOT_READY;
     SHOOT.mode = LOAD_STOP;
   }

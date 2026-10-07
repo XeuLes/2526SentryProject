@@ -136,7 +136,7 @@
 
 //旋转方向
 #define GIMBAL_YAW_DIRECTION (1)
-#define GIMBAL_PITCH_DIRECTION (-1)
+#define GIMBAL_PITCH_DIRECTION (1)
 
 //减速比
 #define GIMBAL_YAW_REDUCTION_RATIO (1)

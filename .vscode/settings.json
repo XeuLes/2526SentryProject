@@ -180,4 +180,5 @@
     "clang-format.executable": "C:\\workspace\\RoboMaster\\WHURM2026_sentry\\.clang-format", // 或者指定完整路径，例如 "C:\\Program Files\\LLVM\\bin\\clang-format.exe"
     "clang-format.style": "file",
     "clang-format.fallbackStyle": "Google",
+    "emberprobe.sampleFrequencyHz": 30,
 }

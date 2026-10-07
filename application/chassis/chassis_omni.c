@@ -56,7 +56,9 @@ void ChassisInit(void)
     {
         PID_init(&chassis_pid.wheel_velocity[i],PID_POSITION,wheel_vel,MAX_OUT_OMNI_VEL,MAX_IOUT_OMNI_VEL);
     }
-    
+
+    const static fp32 gimbal_follow[3]={KP_CHASSIS_FOLLOW_GIMBAL,KI_CHASSIS_FOLLOW_GIMBAL,KD_CHASSIS_FOLLOW_GIMBAL};
+    PID_init(&chassis_pid.follow,PID_POSITION,gimbal_follow,MAX_OUT_CHASSIS_FOLLOW_GIMBAL,MAX_IOUT_CHASSIS_FOLLOW_GIMBAL);
     SMC_init(&chassis_smc.chassis_follow,(fp32[]){J_CHASSIS_FOLLOW,K_CHASSIS_FOLLOW,C_CHASSIS_FOLLOW,0,0,0,0,0,epsilon_CHASSIS_FOLLOW},EXPONENT,SAT_LIMIT_CHASSIS_FOLLOW,U_MAX_CHASSIS_FOLLOW,POS_ESP_CHASSIS_FOLLOW);
 
     //step3 鍒濆�嬪寲鐢垫満
@@ -156,7 +158,7 @@ void ChassisReference(void)
     }
     else if (chassis.mode == CHASSIS_FOLLOW)
     {
-        chassis.reference_rc.vx=CALIBRATION_K*fp32_deadline(chassis.rc->rc.ch[CHASSIS_X_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_X);
+        chassis.reference_rc.vx=CALIBRATION_K*fp32_deadline(-chassis.rc->rc.ch[CHASSIS_X_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_X);
         chassis.reference_rc.vy=CALIBRATION_K*fp32_deadline(-chassis.rc->rc.ch[CHASSIS_Y_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_Y);
 
         if (chassis.rc->key.v & KEY_PRESSED_OFFSET_W) 
@@ -183,12 +185,12 @@ void ChassisReference(void)
         chassis.reference.vy =  chassis.reference_rc.vx * sinf(chassis.yaw_delta) + chassis.reference_rc.vy * cosf(chassis.yaw_delta);
 
         SMC_posErrorUpdate(&chassis_smc.chassis_follow, 0, chassis.yaw_delta, chassis.reference.wz*WHEEL_CENTER_DISTANCE, CHASSIS_SAMPLE_TIME);
-        // chassis.reference.wz=PID_calc(&chassis_pid.follow,chassis.yaw_delta,0);
-        chassis.reference.wz=SMC_calc(&chassis_smc.chassis_follow);
+        chassis.reference.wz = -PID_calc(&chassis_pid.follow,chassis.yaw_delta,0);
+        //chassis.reference.wz=SMC_calc(&chassis_smc.chassis_follow);
     }
     else if (chassis.mode == CHASSIS_IMU)
     {
-        chassis.reference_rc.vx=CALIBRATION_K*fp32_deadline(chassis.rc->rc.ch[CHASSIS_X_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_X);
+        chassis.reference_rc.vx=CALIBRATION_K*fp32_deadline(-chassis.rc->rc.ch[CHASSIS_X_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_X);
         chassis.reference_rc.vy=CALIBRATION_K*fp32_deadline(-chassis.rc->rc.ch[CHASSIS_Y_CHANNEL],-CHASSIS_RC_DEADLINE,CHASSIS_RC_DEADLINE)/CHASSIS_RC_MAX_RANGE*CHASSIS_RC_MAX_SPEED + GetScCmdChassisSpeed(AX_Y);
 
         if (chassis.rc->key.v & KEY_PRESSED_OFFSET_W) 
