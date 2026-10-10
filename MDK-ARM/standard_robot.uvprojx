@@ -81,9 +81,9 @@
             <nStopB2X>0</nStopB2X>
           </BeforeMake>
           <AfterMake>
-            <RunUserProg1>0</RunUserProg1>
+            <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name>D:\Keil5\ARM\ARMCC\Bin\fromelf.exe --elf -o .\standard_tpye_c\app.elf .\standard_tpye_c\standard_tpye_c.axf</UserProg1Name>
+            <UserProg1Name>D:\Keil_v5\ARM\ARM_Compiler_5.06u7\Bin\fromelf.exe --elf -o .\standard_tpye_c\app.elf .\standard_tpye_c\standard_tpye_c.axf</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
@@ -3449,11 +3449,6 @@
               <FilePath>..\application\gimbal\gimbal_task.c</FilePath>
             </File>
             <File>
-              <FileName>gimbal_yaw_pitch_direct.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\application\gimbal\gimbal_yaw_pitch_direct.c</FilePath>
-            </File>
-            <File>
               <FileName>gimbal_virtual.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\application\gimbal\gimbal_virtual.c</FilePath>
@@ -3467,6 +3462,11 @@
               <FileName>old_gimbal_yaw_pitch_direct.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\application\gimbal\old_gimbal_yaw_pitch_direct.c</FilePath>
+            </File>
+            <File>
+              <FileName>gimbal_yaw_pitch_direct.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\application\gimbal\gimbal_yaw_pitch_direct.c</FilePath>
             </File>
           </Files>
         </Group>

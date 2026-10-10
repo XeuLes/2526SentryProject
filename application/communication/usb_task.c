@@ -124,6 +124,9 @@ static RC_ctrl_t VIRTUAL_RC_CTRL;
 uint32_t SENTRY_CMD_DATA;
 Detailed_SentryCmd_t SENTRY_CMD_DATA_DETAILED;
 
+// 成功发送的IMU数据包个数，用于调试检查IMU数据是否在正常发送
+uint8_t USB_Transmit_IMU_NUM = 0;
+
 // 发送数据间隔时间
 typedef struct
 {
@@ -552,7 +555,9 @@ static void UsbSendImuData(void)
     SEND_DATA_IMU.data.roll_vel = IMU->gyro[AX_X];
 
     append_CRC16_check_sum((uint8_t *)&SEND_DATA_IMU, sizeof(SendDataImu_s));
-    USB_Transmit((uint8_t *)&SEND_DATA_IMU, sizeof(SendDataImu_s));
+    if (USB_Transmit((uint8_t *)&SEND_DATA_IMU, sizeof(SendDataImu_s)) == USBD_OK) {
+        USB_Transmit_IMU_NUM++;  // 发送成功才计数
+    }
 }
 
 /**

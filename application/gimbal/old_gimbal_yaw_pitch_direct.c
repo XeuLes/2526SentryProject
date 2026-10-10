@@ -203,7 +203,6 @@ void GimbalInit(void)
  * @param[in]      none
  * @retval         none
  */
-uint8_t gimbal_mode_test=0;
 void GimbalSetMode(void)
 {
   if ( toe_is_error(DBUS_TOE) )
@@ -219,14 +218,12 @@ void GimbalSetMode(void)
   //下档无力
   else if ((switch_is_down(gimbal.rc->rc.s[0]))) //安全档优先级最高
   {
-    gimbal_mode_test = 1;
     gimbal.mode=GIMBAL_ZERO_FORCE;
     gimbal.init_continue=false;
   }
   //初始校准模式
   else if (gimbal.mode==GIMBAL_ZERO_FORCE || gimbal.mode==GIMBAL_INIT)  
   {
-    gimbal_mode_test = 2;
     gimbal.mode=GIMBAL_INIT;
  
     gimbal.init_continue=Gimbal_direct_init_judge();
@@ -238,7 +235,6 @@ void GimbalSetMode(void)
   //上，中档陀螺仪控制
   else if (switch_is_mid(gimbal.rc->rc.s[0]))
   {
-    gimbal_mode_test = 3;
     gimbal.mode=GIMBAL_IMU;
   }
 
@@ -253,12 +249,10 @@ void GimbalSetMode(void)
     //GAP模式之后，进入SCAN模式，此时没有新目标就保持SCAN模式
     if(gimbal.sc_cmd.scan)
     {  
-    gimbal_mode_test = 4;
     gimbal.mode=GIMBAL_SCAN;
     }
     else
     {
-    gimbal_mode_test = 5;
     gimbal.mode=GIMBAL_AUTO_AIM;
     }
   }
@@ -349,8 +343,8 @@ void GimbalReference(void)
   if (gimbal.mode == GIMBAL_INIT)
   {
     gimbal.reference.pitch = 0;
-    float mid_reference_1 = fabs(gimbal.feedback_total_pos.yaw - GIMBAL_YAW_MID - 2*M_PI*gimbal.yaw.fdb.round);
-    float mid_reference_2 = fabs(gimbal.feedback_total_pos.yaw - GIMBAL_YAW_MID - 2*M_PI*(gimbal.yaw.fdb.round+1));
+    float mid_reference_1 = fabs(gimbal.yaw.fdb.total_pos - GIMBAL_YAW_MID - 2*M_PI*gimbal.yaw.fdb.round);
+    float mid_reference_2 = fabs(gimbal.yaw.fdb.total_pos - GIMBAL_YAW_MID - 2*M_PI*(gimbal.yaw.fdb.round+1));
     gimbal.reference.yaw = mid_reference_1 < mid_reference_2 ? GIMBAL_YAW_MID + 2*M_PI*gimbal.yaw.fdb.round : GIMBAL_YAW_MID + 2*M_PI*(gimbal.yaw.fdb.round+1);
 
     //gimbal.reference.yaw = GIMBAL_YAW_MID + 2*M_PI*gimbal.yaw.fdb.round;
@@ -368,6 +362,8 @@ void GimbalReference(void)
     {
       gimbal.reference.pitch=gimbal.feedback_total_pos.pitch;
       gimbal.reference.yaw=gimbal.feedback_total_pos.yaw;
+      gimbal.reference.yaw_last=gimbal.feedback_total_pos.yaw;
+      gimbal.reference.yaw_round_count = 0;
     }
 
     else 
@@ -384,6 +380,9 @@ void GimbalReference(void)
     {
       gimbal.reference.pitch=gimbal.feedback_total_pos.pitch;
       gimbal.reference.yaw=gimbal.feedback_total_pos.yaw;
+      gimbal.reference.yaw_last=gimbal.feedback_total_pos.yaw;
+      gimbal.reference.yaw_round_count = 0;
+
     }
     else
     {
@@ -394,8 +393,29 @@ void GimbalReference(void)
 
   else if (gimbal.mode == GIMBAL_AUTO_AIM)
   {
-    gimbal.reference.yaw = ContinuousAngle(gimbal.feedback_total_pos.yaw+(LowPassFilterCalc(&gimbal_lpf.yaw,GetScCmdGimbalAngle(AX_YAW)-gimbal.feedback_pos.yaw)), &gimbal.reference.yaw_last, &gimbal.reference.yaw_round_count);
-    gimbal.reference.pitch = fp32_constrain(LowPassFilterCalc(&gimbal_lpf.pitch,GetScCmdGimbalAngle(AX_PITCH)),GIMBAL_LOWER_LIMIT_PITCH,GIMBAL_UPPER_LIMIT_PITCH);
+    //新增(2026-10-07)：进入自瞄的第一拍先同步连续角基准（原来直接用上一段会话的yaw_last，会整圈跳变）
+    //新增(2026-10-10)：同时把pitch参考同步到当前实际角度，避免携带上一个模式的残留目标
+    if (gimbal.last_mode != GIMBAL_AUTO_AIM)
+    {
+      gimbal.reference.yaw_last=gimbal.feedback_total_pos.yaw;
+      gimbal.reference.yaw_round_count=0;
+      gimbal.reference.pitch=gimbal.feedback_total_pos.pitch;
+    }
+    gimbal.reference.yaw = ContinuousAngle(gimbal.feedback_total_pos.yaw+(LowPassFilterCalc(&gimbal_lpf.yaw,loop_fp32_constrain(GetScCmdGimbalAngle(AX_YAW)-gimbal.feedback_pos.yaw,-M_PI,M_PI))), &gimbal.reference.yaw_last, &gimbal.reference.yaw_round_count);
+    //新增(2026-10-10)：pitch参考改为速率限制器逐步逼近上位机指令
+    //原来的LowPassFilter(alpha=0.95)对13Hz的视觉阶梯基本不起滤波作用，
+    //每个视觉更新周期的台阶会在SMC的tar_differential中被放大到输出饱和
+    fp32 aim_pitch_target = fp32_constrain(GetScCmdGimbalAngle(AX_PITCH),GIMBAL_LOWER_LIMIT_PITCH,GIMBAL_UPPER_LIMIT_PITCH);
+    //误差较小时按比例一阶逼近，视觉小抖动产生的SMC导数项冲击随误差线性缩小；
+    //误差较大时受速率上限约束，避免参考角变化过快导致输出饱和
+    //fp32 aim_pitch_err = aim_pitch_target - gimbal.reference.pitch;
+    gimbal.reference.pitch += fp32_constrain(aim_pitch_target - gimbal.reference.pitch,
+                                              -GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME,
+                                              GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME);
+
+    //gimbal.reference.pitch += fp32_constrain(aim_pitch_err * GIMBAL_AIM_PITCH_APPR_GAIN,
+    //                                         -GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME,
+    //                                         GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME);
   }
 
   // ModifyDebugDataPackage(1, gimbal.reference.yaw, "ref_yaw");

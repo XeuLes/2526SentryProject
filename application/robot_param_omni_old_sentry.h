@@ -148,7 +148,12 @@
 
 //physical parameters ---------------------
 #define GIMBAL_UPPER_LIMIT_PITCH (0.5f)
-#define GIMBAL_LOWER_LIMIT_PITCH (-0.7f)
+#define GIMBAL_LOWER_LIMIT_PITCH (-0.5f)
+
+//自瞄模式下pitch参考角的逼近参数
+//上位机视觉目标为低频阶梯信号，参考角变化过快时SMC导数项(tar_differential)会放大输出导致饱和
+#define GIMBAL_AIM_PITCH_APPR_GAIN (10.0f)  // (1/s) 比例逼近增益：误差小时一阶收敛(时间常数100ms)，小抖动冲击随误差线性缩小
+#define GIMBAL_AIM_PITCH_RATE_MAX (1.0f)    // (rad/s) 最大逼近速率：对应SMC导数项冲击9450*rate，rate=1.0恰好不超限幅
 
 //电机角度中值设置
 #define GIMBAL_PITCH_MID (0.97791252f)  //云台初始化正对齐的时候使用的pitch轴正中心量
