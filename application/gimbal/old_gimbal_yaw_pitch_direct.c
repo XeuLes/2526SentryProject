@@ -450,7 +450,7 @@ void GimbalConsole(void)
     gimbal.yaw.set.curr = gimbal.yaw.direction * SMC_calc(&gimbal_smc.yaw);
 
     SMC_posErrorUpdate(&gimbal_smc.pitch, gimbal.reference.pitch, gimbal.feedback_total_pos.pitch, gimbal.feedback_vel.pitch, GIMBAL_SAMPLE_TIME);
-    gimbal.pitch.set.curr = gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch);
+    gimbal.pitch.set.curr = gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch) < 2000 ? 2000 : gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch); //pitch电流下限2000
   }
 }
 
