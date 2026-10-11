@@ -393,6 +393,8 @@ void GimbalReference(void)
 
   else if (gimbal.mode == GIMBAL_AUTO_AIM)
   {
+    static fp32 aim_pitch_ref_rate = 0.0f;  // 自瞄pitch参考角速度(rad/s)，经低通后连续变化
+    static fp32 aim_yaw_ref_rate = 0.0f;    // 自瞄yaw参考角速度(rad/s)，经低通后连续变化
     //新增(2026-10-07)：进入自瞄的第一拍先同步连续角基准（原来直接用上一段会话的yaw_last，会整圈跳变）
     //新增(2026-10-10)：同时把pitch参考同步到当前实际角度，避免携带上一个模式的残留目标
     if (gimbal.last_mode != GIMBAL_AUTO_AIM)
@@ -400,22 +402,33 @@ void GimbalReference(void)
       gimbal.reference.yaw_last=gimbal.feedback_total_pos.yaw;
       gimbal.reference.yaw_round_count=0;
       gimbal.reference.pitch=gimbal.feedback_total_pos.pitch;
+      aim_pitch_ref_rate=0.0f;
+      aim_yaw_ref_rate=0.0f;
     }
-    gimbal.reference.yaw = ContinuousAngle(gimbal.feedback_total_pos.yaw+(LowPassFilterCalc(&gimbal_lpf.yaw,loop_fp32_constrain(GetScCmdGimbalAngle(AX_YAW)-gimbal.feedback_pos.yaw,-M_PI,M_PI))), &gimbal.reference.yaw_last, &gimbal.reference.yaw_round_count);
+    //新增(2026-10-11)：yaw参考改为与pitch同构的三级平滑（比例逼近+速率上限+速率低通）
+    //原来的LowPassFilter(alpha=0.01)几乎直通，视觉阶梯直接打进SMC导数项导致输出冲击
+    //连续目标角=当前圈数下的上位机绝对角(cmd+2πk)，跨圈自动跟随
+    fp32 aim_yaw_target = gimbal.feedback_total_pos.yaw
+        + loop_fp32_constrain(GetScCmdGimbalAngle(AX_YAW)-gimbal.feedback_pos.yaw,-M_PI,M_PI);
+    fp32 aim_yaw_err = aim_yaw_target - gimbal.reference.yaw;
+    fp32 aim_yaw_rate_cmd = fp32_constrain(aim_yaw_err * GIMBAL_AIM_YAW_APPR_GAIN,
+                                           -GIMBAL_AIM_YAW_RATE_MAX,
+                                           GIMBAL_AIM_YAW_RATE_MAX);
+    aim_yaw_ref_rate += (aim_yaw_rate_cmd - aim_yaw_ref_rate) * GIMBAL_AIM_YAW_RATE_LPF;
+    gimbal.reference.yaw += aim_yaw_ref_rate * GIMBAL_SAMPLE_TIME;
     //新增(2026-10-10)：pitch参考改为速率限制器逐步逼近上位机指令
     //原来的LowPassFilter(alpha=0.95)对13Hz的视觉阶梯基本不起滤波作用，
     //每个视觉更新周期的台阶会在SMC的tar_differential中被放大到输出饱和
     fp32 aim_pitch_target = fp32_constrain(GetScCmdGimbalAngle(AX_PITCH),GIMBAL_LOWER_LIMIT_PITCH,GIMBAL_UPPER_LIMIT_PITCH);
     //误差较小时按比例一阶逼近，视觉小抖动产生的SMC导数项冲击随误差线性缩小；
     //误差较大时受速率上限约束，避免参考角变化过快导致输出饱和
-    //fp32 aim_pitch_err = aim_pitch_target - gimbal.reference.pitch;
-    gimbal.reference.pitch += fp32_constrain(aim_pitch_target - gimbal.reference.pitch,
-                                              -GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME,
-                                              GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME);
-
-    //gimbal.reference.pitch += fp32_constrain(aim_pitch_err * GIMBAL_AIM_PITCH_APPR_GAIN,
-    //                                         -GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME,
-    //                                         GIMBAL_AIM_PITCH_RATE_MAX * GIMBAL_SAMPLE_TIME);
+    //再对速率做一阶低通：参考角速度连续变化，SMC导数项不再有阶跃
+    fp32 aim_pitch_err = aim_pitch_target - gimbal.reference.pitch;
+    fp32 aim_pitch_rate_cmd = fp32_constrain(aim_pitch_err * GIMBAL_AIM_PITCH_APPR_GAIN,
+                                             -GIMBAL_AIM_PITCH_RATE_MAX,
+                                             GIMBAL_AIM_PITCH_RATE_MAX);
+    aim_pitch_ref_rate += (aim_pitch_rate_cmd - aim_pitch_ref_rate) * GIMBAL_AIM_RATE_LPF;
+    gimbal.reference.pitch += aim_pitch_ref_rate * GIMBAL_SAMPLE_TIME;
   }
 
   // ModifyDebugDataPackage(1, gimbal.reference.yaw, "ref_yaw");
@@ -450,7 +463,9 @@ void GimbalConsole(void)
     gimbal.yaw.set.curr = gimbal.yaw.direction * SMC_calc(&gimbal_smc.yaw);
 
     SMC_posErrorUpdate(&gimbal_smc.pitch, gimbal.reference.pitch, gimbal.feedback_total_pos.pitch, gimbal.feedback_vel.pitch, GIMBAL_SAMPLE_TIME);
-    gimbal.pitch.set.curr = gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch) < 2000 ? 2000 : gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch); //pitch电流下限2000
+    fp32 pitch_out = gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch);
+    //pitch输出下限：SMC输出低于下限时钳到下限(单边限幅)，削减向下的力矩冲击
+    gimbal.pitch.set.curr = pitch_out < GIMBAL_PITCH_CURRENT_MIN ? GIMBAL_PITCH_CURRENT_MIN : pitch_out;
   }
 }
 

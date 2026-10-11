@@ -147,13 +147,22 @@
 #define GIMBAL_PITCH_MODE (0)
 
 //physical parameters ---------------------
-#define GIMBAL_UPPER_LIMIT_PITCH (0.5f)
+#define GIMBAL_UPPER_LIMIT_PITCH (0.7f)
 #define GIMBAL_LOWER_LIMIT_PITCH (-0.5f)
 
 //自瞄模式下pitch参考角的逼近参数
 //上位机视觉目标为低频阶梯信号，参考角变化过快时SMC导数项(tar_differential)会放大输出导致饱和
 #define GIMBAL_AIM_PITCH_APPR_GAIN (10.0f)  // (1/s) 比例逼近增益：误差小时一阶收敛(时间常数100ms)，小抖动冲击随误差线性缩小
 #define GIMBAL_AIM_PITCH_RATE_MAX (1.0f)    // (rad/s) 最大逼近速率：对应SMC导数项冲击9450*rate，rate=1.0恰好不超限幅
+#define GIMBAL_AIM_RATE_LPF (0.05f)         // 参考角速度一阶低通系数(1kHz下)：角加速度约20ms爬升，消除起停阶跃；1.0=关闭滤波
+
+//自瞄模式下yaw参考角的逼近参数（与pitch同构，参数独立便于分轴调参）
+#define GIMBAL_AIM_YAW_APPR_GAIN (10.0f)    // (1/s) 比例逼近增益
+#define GIMBAL_AIM_YAW_RATE_MAX (1.5f)      // (rad/s) yaw的D系数J(c+K)=9225，1.5rad/s对应冲击13838，在u_max(15000)内
+#define GIMBAL_AIM_YAW_RATE_LPF (0.05f)     // 参考角速度一阶低通系数
+
+//pitch输出下限(motor原始值)：SMC输出低于该值时钳到下限，削减向下的力矩冲击
+#define GIMBAL_PITCH_CURRENT_MIN (2000.0f)
 
 //电机角度中值设置
 #define GIMBAL_PITCH_MID (0.97791252f)  //云台初始化正对齐的时候使用的pitch轴正中心量
