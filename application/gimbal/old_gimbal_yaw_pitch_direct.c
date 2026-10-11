@@ -452,7 +452,7 @@ void GimbalConsole(void)
   }
   else if (gimbal.mode == GIMBAL_INIT)
   {
-    SMC_posErrorUpdate(&gimbal_smc.yaw, gimbal.reference.yaw, gimbal.yaw.fdb.total_pos, gimbal.yaw.fdb.vel, GIMBAL_SAMPLE_TIME);
+    SMC_posErrorUpdate(&gimbal_smc.yaw, gimbal.reference.yaw, gimbal.yaw.fdb.total_pos, gimbal.feedback_vel.yaw, GIMBAL_SAMPLE_TIME);
     gimbal.yaw.set.curr = gimbal.yaw.direction * SMC_calc(&gimbal_smc.yaw);
     SMC_posErrorUpdate(&gimbal_smc.pitch, gimbal.reference.pitch, gimbal.feedback_total_pos.pitch, gimbal.feedback_vel.pitch, GIMBAL_SAMPLE_TIME);
     gimbal.pitch.set.curr = gimbal.pitch.direction * SMC_calc(&gimbal_smc.pitch);
